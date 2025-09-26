@@ -40,7 +40,7 @@
       download: true,
       header: true,
       complete: function(results) {
-        data = results.data;
+        data = results.data.filter(d => d.day); // drop empty rows
         const days = [...new Set(data.map(d => d.day))].map(Number).sort((a,b)=>a-b);
         document.getElementById("daySlider").max = Math.max(...days);
         renderDay(currentDay);
@@ -53,13 +53,18 @@
       const output = document.getElementById("output");
       output.innerHTML = "";
 
-      // Filter by day index
       const rows = data.filter(d => Number(d.day) === dayIdx);
       if (rows.length > 0) {
-        const row = rows[0]; // first row (like Streamlit)
-        Object.values(row).forEach(val => {
-          if (val && val !== "week" && val !== "day") {
-            const text = showPinyin ? val : val.split(" ")[0];
+        const row = rows[0]; // just like Streamlit: first row for that day
+        Object.keys(row).forEach(col => {
+          if (col !== "week" && col !== "day" && row[col]) {
+            const val = row[col].trim();
+            let text;
+            if (showPinyin) {
+              text = val; // keep char + pinyin
+            } else {
+              text = val.split(/\s+/)[0]; // only the Chinese char
+            }
             const h = document.createElement("h1");
             h.textContent = text;
             output.appendChild(h);
