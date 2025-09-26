@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Daily Characters</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { font-size: 2em; margin: 10px 0; }
+    button { margin: 5px; padding: 8px 12px; font-size: 14px; }
+    .controls { margin: 15px 0; }
+  </style>
+</head>
+<body>
+  <h2>Daily Characters</h2>
+
+  <!-- Toggle -->
+  <label>
+    <input type="checkbox" id="togglePinyin" checked>
+    Show Pinyin
+  </label>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button id="prevBtn">← Previous</button>
+    <input type="range" id="daySlider" min="1" max="10" value="1">
+    <button id="nextBtn">Next →</button>
+    <span id="dayLabel">Day 1</span>
+  </div>
+
+  <!-- Output -->
+  <div id="output"></div>
+
+  <script>
+    let data = [];
+    let currentDay = 1;
+
+    // Load CSV
+    Papa.parse("daily_with_pinyin.csv", {
+      download: true,
+      header: true,
+      complete: function(results) {
+        data = results.data;
+        const days = [...new Set(data.map(d => d.day))].map(Number).sort((a,b)=>a-b);
+        document.getElementById("daySlider").max = Math.max(...days);
+        renderDay(currentDay);
+      }
+    });
+
+    function renderDay(dayIdx) {
+      currentDay = dayIdx;
+      const showPinyin = document.getElementById("togglePinyin").checked;
+      const output = document.getElementById("output");
+      output.innerHTML = "";
+
+      // Filter by day index
+      const rows = data.filter(d => Number(d.day) === dayIdx);
+      if (rows.length > 0) {
+        const row = rows[0]; // first row (like Streamlit)
+        Object.values(row).forEach(val => {
+          if (val && val !== "week" && val !== "day") {
+            const text = showPinyin ? val : val.split(" ")[0];
+            const h = document.createElement("h1");
+            h.textContent = text;
+            output.appendChild(h);
+          }
+        });
+      }
+
+      document.getElementById("dayLabel").textContent = "Day " + dayIdx;
+      document.getElementById("daySlider").value = dayIdx;
+    }
+
+    // Button events
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      if (currentDay > 1) renderDay(currentDay - 1);
+    });
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      renderDay(currentDay + 1);
+    });
+    document.getElementById("daySlider").addEventListener("input", e => {
+      renderDay(Number(e.target.value));
+    });
+    document.getElementById("togglePinyin").addEventListener("change", () => {
+      renderDay(currentDay);
+    });
+  </script>
+</body>
+</html>
