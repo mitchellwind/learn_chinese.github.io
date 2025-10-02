@@ -146,7 +146,7 @@
         const row = rows[0];
         const weekIdx = row.week;
         Object.keys(row).forEach(col => {
-          if (col !== "week" && col !== "day" && row[col]) {
+          if (col !== "week" && col !== "day" && col !== "index") {
             const val = row[col].trim();
             const text = showPinyin ? val : val.split(/\s+/)[0];
             const h = document.createElement("h1");
@@ -161,7 +161,7 @@
       document.getElementById("daySlider").value = dayIdx;
     }
 
-    function renderWeekly(weekIdx) {
+    function renderWeek(weekIdx) {
       const showPinyin = document.getElementById("togglePinyin").checked;
       const shuffle = document.getElementById("shuffleWeekly").checked;
       const output = document.getElementById("weeklyOutput");
@@ -174,7 +174,7 @@
       let values = [];
       rows.forEach(row => {
         Object.keys(row).forEach(col => {
-          if (col !== "week" && col !== "day" && row[col]) {
+          if (col !== "week" && col !== "day" && col !== "index") {
             const val = row[col].trim();
             const text = showPinyin ? val : val.split(/\s+/)[0];
             values.push(text);
@@ -243,11 +243,11 @@
       renderDay(Number(e.target.value));
     });
     document.getElementById("weekSelect").addEventListener("change", e => {
-      renderWeekly(e.target.value);
+      renderWeek(e.target.value);
     });
     document.getElementById("shuffleWeekly").addEventListener("change", () => {
       const weekIdx = document.getElementById("weekSelect").value;
-      renderWeekly(weekIdx);
+      renderWeek(weekIdx);
     });
     document.getElementById("togglePinyin").addEventListener("change", () => {
       renderDay(currentDay);
