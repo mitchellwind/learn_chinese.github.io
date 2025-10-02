@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Chinese Learning</title>
@@ -7,15 +8,40 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <style>
-    body { padding: 20px; }
-    h1 { font-size: 2rem; margin: 10px 0; }
-    .week-cols { display: flex; gap: 20px; margin-top: 20px; }
-    .week-col { flex: 1; }
-    .controls { margin: 20px 0; }
-    table { margin-top: 15px; }
-    th, td { text-align: center; }
+    body {
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin: 10px 0;
+    }
+
+    .week-cols {
+      display: flex;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .week-col {
+      flex: 1;
+    }
+
+    .controls {
+      margin: 20px 0;
+    }
+
+    table {
+      margin-top: 15px;
+    }
+
+    th,
+    td {
+      text-align: center;
+    }
   </style>
 </head>
+
 <body class="bg-light">
   <div class="container">
     <h2 class="mb-4">📘 Chinese Learning</h2>
@@ -29,13 +55,16 @@
     <!-- Tabs -->
     <ul class="nav nav-tabs" id="myTab" role="tablist">
       <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button" role="tab">Daily</button>
+        <button class="nav-link active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily" type="button"
+          role="tab">Daily</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button" role="tab">Weekly</button>
+        <button class="nav-link" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button"
+          role="tab">Weekly</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab">All</button>
+        <button class="nav-link" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button"
+          role="tab">All</button>
       </li>
     </ul>
 
@@ -52,13 +81,22 @@
       </div>
 
       <!-- Weekly tab -->
-      <div class="tab-pane fade" id="weekly" role="tabpanel">
-        <div class="mb-3">
-          <label for="weekSelect" class="form-label">Select Week:</label>
-          <select class="form-select w-auto d-inline-block" id="weekSelect"></select>
+      <div id="weekly" class="tab-pane fade">
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <label for="weekSelect" class="form-label">Select Week:</label>
+            <select id="weekSelect" class="form-select"></select>
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="shuffleWeekly">
+              <label class="form-check-label" for="shuffleWeekly">Random Order</label>
+            </div>
+          </div>
         </div>
-        <div id="weeklyOutput" class="week-cols"></div>
+        <div id="weeklyOutput" class="row"></div>
       </div>
+
 
       <!-- All tab -->
       <div class="tab-pane fade" id="all" role="tabpanel">
@@ -76,10 +114,10 @@
     Papa.parse("daily_with_pinyin.csv", {
       download: true,
       header: true,
-      complete: function(results) {
+      complete: function (results) {
         data = results.data.filter(d => d.day);
-        const days = [...new Set(data.map(d => d.day))].map(Number).sort((a,b)=>a-b);
-        weeks = [...new Set(data.map(d => d.week))].map(Number).sort((a,b)=>a-b);
+        const days = [...new Set(data.map(d => d.day))].map(Number).sort((a, b) => a - b);
+        weeks = [...new Set(data.map(d => d.week))].map(Number).sort((a, b) => a - b);
 
         document.getElementById("daySlider").max = Math.max(...days);
 
@@ -123,27 +161,44 @@
       document.getElementById("daySlider").value = dayIdx;
     }
 
-    function renderWeek(weekIdx) {
+    function renderWeekly(weekIdx) {
       const showPinyin = document.getElementById("togglePinyin").checked;
-      const rows = data.filter(d => Number(d.week) === weekIdx);
+      const shuffle = document.getElementById("shuffleWeekly").checked;
       const output = document.getElementById("weeklyOutput");
       output.innerHTML = "";
 
-      const cols = [document.createElement("div"), document.createElement("div"), document.createElement("div")];
-      cols.forEach(c => c.className = "week-col");
+      // collect all rows for the selected week
+      let rows = data.filter(d => Number(d.week) === Number(weekIdx));
 
+      // flatten into array of values
+      let values = [];
       rows.forEach(row => {
-        Object.keys(row).forEach((col, n) => {
+        Object.keys(row).forEach(col => {
           if (col !== "week" && col !== "day" && row[col]) {
             const val = row[col].trim();
             const text = showPinyin ? val : val.split(/\s+/)[0];
-            const h = document.createElement("h1");
-            h.textContent = text;
-            if (cols[n]) cols[n].appendChild(h);
+            values.push(text);
           }
         });
       });
-      cols.forEach(c => output.appendChild(c));
+
+      // shuffle if enabled
+      if (shuffle) {
+        for (let i = values.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [values[i], values[j]] = [values[j], values[i]];
+        }
+      }
+
+      // render as grid
+      values.forEach(val => {
+        const colDiv = document.createElement("div");
+        colDiv.className = "col-md-4 mb-3";
+        const h = document.createElement("h2");
+        h.textContent = val;
+        colDiv.appendChild(h);
+        output.appendChild(colDiv);
+      });
     }
 
     function renderAll() {
@@ -188,7 +243,11 @@
       renderDay(Number(e.target.value));
     });
     document.getElementById("weekSelect").addEventListener("change", e => {
-      renderWeek(Number(e.target.value));
+      renderWeekly(e.target.value);
+    });
+    document.getElementById("shuffleWeekly").addEventListener("change", () => {
+      const weekIdx = document.getElementById("weekSelect").value;
+      renderWeekly(weekIdx);
     });
     document.getElementById("togglePinyin").addEventListener("change", () => {
       renderDay(currentDay);
@@ -197,4 +256,5 @@
     });
   </script>
 </body>
+
 </html>
