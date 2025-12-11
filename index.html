@@ -70,9 +70,23 @@
     </ul>
 
     <div class="tab-content border p-3 bg-white" id="myTabContent">
+
       <!-- Daily tab -->
       <div class="tab-pane fade show active" id="daily" role="tabpanel">
         <span id="dayLabel" class="ms-3 fw-bold">Week 1, Day 1</span>
+
+        <!-- NEW: Daily week/day selectors -->
+        <div class="row mt-3 mb-2">
+          <div class="col-4">
+            <label class="form-label">Select Week:</label>
+            <select id="dailyWeekSelect" class="form-select"></select>
+          </div>
+          <div class="col-4">
+            <label class="form-label">Select Day:</label>
+            <select id="dailyDaySelect" class="form-select"></select>
+          </div>
+        </div>
+
         <div class="controls d-flex align-items-center gap-2">
           <button id="prevBtn" class="btn btn-primary btn-sm">← Previous</button>
           <input type="range" class="form-range w-50" id="daySlider" min="1" max="10" value="1">
@@ -98,12 +112,12 @@
         <div id="weeklyOutput" class="row"></div>
       </div>
 
-
       <!-- All tab -->
       <div class="tab-pane fade" id="all" role="tabpanel">
         <h5>Full Dataset</h5>
         <div id="allOutput" class="table-responsive"></div>
       </div>
+
     </div>
   </div>
 
@@ -133,6 +147,48 @@
         renderDay(currentDay);
         renderWeek(weeks[0]);
         renderAll();
+
+        // ----- Populate DAILY selectors -----
+        const weekSelDaily = document.getElementById("dailyWeekSelect");
+        const daySelDaily = document.getElementById("dailyDaySelect");
+
+        weeks.forEach(w => {
+          const opt = document.createElement("option");
+          opt.value = w;
+          opt.textContent = "Week " + w;
+          weekSelDaily.appendChild(opt);
+        });
+
+        function updateDailyDayOptions(week) {
+          daySelDaily.innerHTML = "";
+          const daysOfWeek = data
+            .filter(d => Number(d.week) === Number(week))
+            .map(d => Number(d.day));
+
+          [...new Set(daysOfWeek)]
+            .sort((a, b) => a - b)
+            .forEach(day => {
+              const opt = document.createElement("option");
+              opt.value = day;
+              opt.textContent = "Day " + day;
+              daySelDaily.appendChild(opt);
+            });
+        }
+
+        updateDailyDayOptions(weeks[0]);
+
+        // events
+        weekSelDaily.addEventListener("change", () => {
+          const w = Number(weekSelDaily.value);
+          updateDailyDayOptions(w);
+          const firstDay = Number(daySelDaily.firstElementChild.value);
+          renderDay(firstDay);
+        });
+
+        daySelDaily.addEventListener("change", () => {
+          renderDay(Number(daySelDaily.value));
+        });
+
       }
     });
 
@@ -159,7 +215,33 @@
       } else {
         document.getElementById("dayLabel").textContent = `Day ${dayIdx} (no data)`;
       }
+
       document.getElementById("daySlider").value = dayIdx;
+
+      // Sync dropdowns
+      const weekSelDaily = document.getElementById("dailyWeekSelect");
+      const daySelDaily = document.getElementById("dailyDaySelect");
+
+      if (rows.length > 0) {
+        weekSelDaily.value = rows[0].week;
+
+        // update day dropdown options for this week
+        const daysOfWeek = data
+          .filter(d => Number(d.week) === Number(rows[0].week))
+          .map(d => Number(d.day));
+
+        daySelDaily.innerHTML = "";
+        [...new Set(daysOfWeek)]
+          .sort((a, b) => a - b)
+          .forEach(d => {
+            const opt = document.createElement("option");
+            opt.value = d;
+            opt.textContent = "Day " + d;
+            daySelDaily.appendChild(opt);
+          });
+
+        daySelDaily.value = dayIdx;
+      }
     }
 
     function renderWeek(weekIdx) {
@@ -168,11 +250,9 @@
       const output = document.getElementById("weeklyOutput");
       output.innerHTML = "";
 
-      // collect all rows for the selected week
       let rows = data.filter(d => Number(d.week) === Number(weekIdx));
-
-      // flatten into array of values
       let values = [];
+
       rows.forEach(row => {
         Object.keys(row).forEach(col => {
           if (col !== "week" && col !== "day" && col !== "index") {
@@ -183,7 +263,6 @@
         });
       });
 
-      // shuffle if enabled
       if (shuffle) {
         for (let i = values.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -191,7 +270,6 @@
         }
       }
 
-      // render as grid
       values.forEach(val => {
         const colDiv = document.createElement("div");
         colDiv.className = "col-6";
