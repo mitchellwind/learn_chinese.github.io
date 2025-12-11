@@ -18,22 +18,8 @@
       margin: 10px 0;
     }
 
-    .week-cols {
-      display: flex;
-      gap: 5px;
-      margin-top: 10px;
-    }
-
-    .week-col {
-      flex: 1;
-    }
-
     .controls {
       margin: 20px 0;
-    }
-
-    table {
-      margin-top: 15px;
     }
 
     th,
@@ -46,6 +32,15 @@
 <body class="bg-light">
   <div class="container">
     <h2 class="mb-4">📘 Chinese Learning</h2>
+
+    <!-- USER SELECTOR -->
+    <div class="mb-3">
+      <label class="form-label fw-bold">Select User:</label>
+      <select id="userSelect" class="form-select w-25">
+        <option value="userA">Person A</option>
+        <option value="userB">Person B</option>
+      </select>
+    </div>
 
     <!-- Toggle -->
     <div class="form-check form-switch mb-3">
@@ -75,7 +70,7 @@
       <div class="tab-pane fade show active" id="daily" role="tabpanel">
         <span id="dayLabel" class="ms-3 fw-bold">Week 1, Day 1</span>
 
-        <!-- NEW: Daily week/day selectors -->
+        <!-- Daily selectors -->
         <div class="row mt-3 mb-2">
           <div class="col-4">
             <label class="form-label">Select Week:</label>
@@ -92,6 +87,7 @@
           <input type="range" class="form-range w-50" id="daySlider" min="1" max="10" value="1">
           <button id="nextBtn" class="btn btn-primary btn-sm">Next →</button>
         </div>
+
         <div id="dailyOutput" class="mt-3"></div>
       </div>
 
@@ -109,6 +105,7 @@
             </div>
           </div>
         </div>
+
         <div id="weeklyOutput" class="row"></div>
       </div>
 
@@ -126,6 +123,18 @@
     let currentDay = 1;
     let weeks = [];
 
+    function saveProgress(user, week, day) {
+      localStorage.setItem(`progress_${user}_week`, week);
+      localStorage.setItem(`progress_${user}_day`, day);
+    }
+
+    function loadProgress(user) {
+      const w = Number(localStorage.getItem(`progress_${user}_week`));
+      const d = Number(localStorage.getItem(`progress_${user}_day`));
+      if (!w || !d) return null;
+      return { week: w, day: d };
+    }
+
     Papa.parse("daily_with_pinyin.csv", {
       download: true,
       header: true,
@@ -136,6 +145,7 @@
 
         document.getElementById("daySlider").max = Math.max(...days);
 
+        // Weekly tab week selector
         const weekSelect = document.getElementById("weekSelect");
         weeks.forEach(w => {
           const opt = document.createElement("option");
@@ -144,11 +154,7 @@
           weekSelect.appendChild(opt);
         });
 
-        renderDay(currentDay);
-        renderWeek(weeks[0]);
-        renderAll();
-
-        // ----- Populate DAILY selectors -----
+        // DAILY selectors
         const weekSelDaily = document.getElementById("dailyWeekSelect");
         const daySelDaily = document.getElementById("dailyDaySelect");
 
@@ -165,8 +171,7 @@
             .filter(d => Number(d.week) === Number(week))
             .map(d => Number(d.day));
 
-          [...new Set(daysOfWeek)]
-            .sort((a, b) => a - b)
+          [...new Set(daysOfWeek)].sort((a, b) => a - b)
             .forEach(day => {
               const opt = document.createElement("option");
               opt.value = day;
@@ -175,20 +180,59 @@
             });
         }
 
-        updateDailyDayOptions(weeks[0]);
+        // Restore progress for selected user
+        const user = document.getElementById("userSelect").value;
+        const saved = loadProgress(user);
 
-        // events
+        if (saved) {
+          weekSelDaily.value = saved.week;
+          updateDailyDayOptions(saved.week);
+          daySelDaily.value = saved.day;
+          renderDay(saved.day);
+        } else {
+          updateDailyDayOptions(weeks[0]);
+          renderDay(currentDay);
+        }
+
+        renderWeek(weeks[0]);
+        renderAll();
+
+        // USER CHANGE: load the new user's progress
+        document.getElementById("userSelect").addEventListener("change", () => {
+          const newUser = document.getElementById("userSelect").value;
+          const p = loadProgress(newUser);
+
+          if (p) {
+            weekSelDaily.value = p.week;
+            updateDailyDayOptions(p.week);
+            daySelDaily.value = p.day;
+            renderDay(p.day);
+          } else {
+            weekSelDaily.value = weeks[0];
+            updateDailyDayOptions(weeks[0]);
+            const firstDay = Number(daySelDaily.firstElementChild.value);
+            daySelDaily.value = firstDay;
+            renderDay(firstDay);
+          }
+        });
+
+        // DAILY EVENTS
         weekSelDaily.addEventListener("change", () => {
+          const user = document.getElementById("userSelect").value;
           const w = Number(weekSelDaily.value);
           updateDailyDayOptions(w);
           const firstDay = Number(daySelDaily.firstElementChild.value);
+          saveProgress(user, w, firstDay);
           renderDay(firstDay);
         });
 
         daySelDaily.addEventListener("change", () => {
-          renderDay(Number(daySelDaily.value));
+          const user = document.getElementById("userSelect").value;
+          const d = Number(daySelDaily.value);
+          const w = Number(weekSelDaily.value);
+          saveProgress(user, w, d);
+          renderDay(d);
         });
-
       }
     });
 
@@ -199,9 +243,13 @@
       output.innerHTML = "";
 
       const rows = data.filter(d => Number(d.day) === dayIdx);
+      const weekSelDaily = document.getElementById("dailyWeekSelect");
+      const daySelDaily = document.getElementById("dailyDaySelect");
+
       if (rows.length > 0) {
         const row = rows[0];
         const weekIdx = row.week;
+
         Object.keys(row).forEach(col => {
           if (col !== "week" && col !== "day" && col !== "index") {
             const val = row[col].trim();
@@ -211,23 +259,13 @@
             output.appendChild(h);
           }
         });
+
         document.getElementById("dayLabel").textContent = `Week ${weekIdx}, Day ${dayIdx}`;
-      } else {
-        document.getElementById("dayLabel").textContent = `Day ${dayIdx} (no data)`;
-      }
 
-      document.getElementById("daySlider").value = dayIdx;
+        weekSelDaily.value = weekIdx;
 
-      // Sync dropdowns
-      const weekSelDaily = document.getElementById("dailyWeekSelect");
-      const daySelDaily = document.getElementById("dailyDaySelect");
-
-      if (rows.length > 0) {
-        weekSelDaily.value = rows[0].week;
-
-        // update day dropdown options for this week
         const daysOfWeek = data
-          .filter(d => Number(d.week) === Number(rows[0].week))
+          .filter(d => Number(d.week) === Number(weekIdx))
           .map(d => Number(d.day));
 
         daySelDaily.innerHTML = "";
@@ -241,7 +279,12 @@
           });
 
         daySelDaily.value = dayIdx;
+
+        const user = document.getElementById("userSelect").value;
+        saveProgress(user, weekIdx, dayIdx);
       }
+
+      document.getElementById("daySlider").value = dayIdx;
     }
 
     function renderWeek(weekIdx) {
@@ -288,11 +331,13 @@
       const table = document.createElement("table");
       table.className = "table table-bordered table-striped table-sm";
       const headerRow = document.createElement("tr");
+
       Object.keys(data[0]).forEach(k => {
         const th = document.createElement("th");
         th.textContent = k;
         headerRow.appendChild(th);
       });
+
       table.appendChild(headerRow);
 
       data.forEach(row => {
@@ -315,25 +360,31 @@
     document.getElementById("prevBtn").addEventListener("click", () => {
       if (currentDay > 1) renderDay(currentDay - 1);
     });
+
     document.getElementById("nextBtn").addEventListener("click", () => {
       renderDay(currentDay + 1);
     });
+
     document.getElementById("daySlider").addEventListener("input", e => {
       renderDay(Number(e.target.value));
     });
+
     document.getElementById("weekSelect").addEventListener("change", e => {
       renderWeek(e.target.value);
     });
+
     document.getElementById("shuffleWeekly").addEventListener("change", () => {
       const weekIdx = document.getElementById("weekSelect").value;
       renderWeek(weekIdx);
     });
+
     document.getElementById("togglePinyin").addEventListener("change", () => {
       renderDay(currentDay);
       renderWeek(Number(document.getElementById("weekSelect").value));
       renderAll();
     });
   </script>
+
 </body>
 
 </html>
